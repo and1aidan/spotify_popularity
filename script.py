@@ -108,6 +108,9 @@ def get_track_name(track_id, token):
 def get_track_release_date(track_id, token):
     pass
 
+# retrieve number of markets song is currently available in, type arr
+def get_num_markets(track_id, token):
+    pass
 
 
 # main
