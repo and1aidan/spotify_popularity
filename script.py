@@ -8,7 +8,7 @@ load_dotenv()
 
 CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
 CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
-
+# api token
 def get_access_token(client_id, client_secret):
     spotify_auth_url = "https://accounts.spotify.com/api/token"
 
@@ -31,6 +31,14 @@ def get_access_token(client_id, client_secret):
     # print(response.json())
     return response.json()["access_token"]
 
+# y label, what we are going to try to predict
+def get_track_popularity(track_id, token):
+    pass
+
+
+
+''' artist's metadata '''
+
 # retrieve artist by artist_id, type string
 def get_artist_name(artist_id, token):
     url = f"https://api.spotify.com/v1/artists/{artist_id}"
@@ -45,7 +53,7 @@ def get_artist_name(artist_id, token):
     return artist.json()["name"]
 
 # retrieve genres for an artist by artist_id, type array of strings
-def get_artist_genre(artist_id, token):
+def get_artist_genres(artist_id, token):
     url = f"https://api.spotify.com/v1/artists/{artist_id}"
     headers = {
         "Authorization": f"Bearer {token}"
@@ -78,6 +86,27 @@ def get_artist_follow_count(artist_id, token):
     )
 
     return artist.json()["followers"]["total"]    
+
+''' track metadata '''
+
+# retrieve artists, type arr
+def get_track_artists():
+    pass
+
+# retrieve track duration
+def get_duration_ms(track_id, token):
+    pass
+
+# retrieve if a song has explicit lyrics or not, type boolean
+def get_explicit_status(track_id, token):
+    pass
+
+# retrieve if a track has 
+def get_track_name(track_id, token):
+    pass
+# retrieve release date of track, api consists of release_date and release_data_precision so check this one in-depth
+def get_track_release_date(track_id, token):
+    pass
 
 
 
