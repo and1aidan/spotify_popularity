@@ -63,7 +63,8 @@ def get_artist_genres(artist_id, token):
         headers=headers
     )
 
-    return artist.json()["genre"]
+    return artist.json()["genres"]
+
 # retrieve popularity of an artist of scale 0-100, type int
 def get_artist_popularity(artist_id, token):
     url = f"https://api.spotify.com/v1/artists/{artist_id}"
@@ -74,6 +75,8 @@ def get_artist_popularity(artist_id, token):
         url, 
         headers=headers
     )
+    return artist.json()["popularity"]
+
 # retrieve follower count of an artist, type int
 def get_artist_follow_count(artist_id, token):
     url = f"https://api.spotify.com/v1/artists/{artist_id}"
@@ -90,32 +93,83 @@ def get_artist_follow_count(artist_id, token):
 ''' track metadata '''
 
 # retrieve artists, type arr
-def get_track_artists():
-    pass
+def get_track_artists(track_id, token):
+    url = f"https://api.spotify.com/v1/tracks/{track_id}"
+    headers = {
+        "Authorization": f"Bearer {token}"
+    }
+    track_request = requests.get(
+        url, 
+        headers=headers
+    )
+    track = track_request.json()
+
+    return [{"name": a["name"], "id": a["id"]} for a in track["artists"]]
 
 # retrieve track duration
 def get_duration_ms(track_id, token):
-    pass
+    url = f"https://api.spotify.com/v1/tracks/{track_id}"
+    headers = {
+        "Authorization": f"Bearer {token}"
+    }
+    track = requests.get(
+        url, 
+        headers=headers
+    )
+    return track.json()["duration_ms"]
 
 # retrieve if a song has explicit lyrics or not, type boolean
 def get_explicit_status(track_id, token):
-    pass
+    url = f"https://api.spotify.com/v1/tracks/{track_id}"
+    headers = {
+        "Authorization": f"Bearer {token}"
+    }
+    track = requests.get(
+        url, 
+        headers=headers
+    )
+    return track.json()["explicit"]
 
 # retrieve if a track has 
 def get_track_name(track_id, token):
-    pass
-# retrieve release date of track, api consists of release_date and release_data_precision so check this one in-depth
+    url = f"https://api.spotify.com/v1/tracks/{track_id}"
+    headers = {
+        "Authorization": f"Bearer {token}"
+    }
+    track = requests.get(
+        url, 
+        headers=headers
+    )
+    return track.json()["name"]
+# retrieve release date of track, type str
 def get_track_release_date(track_id, token):
-    pass
+    url = f"https://api.spotify.com/v1/tracks/{track_id}"
+    headers = {
+        "Authorization": f"Bearer {token}"
+    }
+    track = requests.get(
+        url, 
+        headers=headers
+    )
+    return track.json()["album"]["release_date"]
 
-# retrieve number of markets song is currently available in, type arr
+# retrieve num of markets song is currently available in, type arr
 def get_num_markets(track_id, token):
-    pass
+    url = f"https://api.spotify.com/v1/tracks/{track_id}"
+    headers = {
+        "Authorization": f"Bearer {token}"
+    }
+    track = requests.get(
+        url, 
+        headers=headers
+    )
+    return len(track.json()["available_markets"])
 
 
 # main
 def main():
     token = get_access_token(CLIENT_ID, CLIENT_SECRET)
+    print(get_num_markets("3bGfuGWywg85koHG8nturm",token))
 
 if __name__ == "__main__":
     main()
