@@ -8,17 +8,12 @@ load_dotenv()
 
 CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
 CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
-# api token
+
+
 def get_access_token(client_id, client_secret):
     spotify_auth_url = "https://accounts.spotify.com/api/token"
-
-    headers = {
-        "Content-Type": "application/x-www-form-urlencoded"
-    }
-
-    data = {
-        "grant_type": "client_credentials"
-    }
+    headers = {"Content-Type": "application/x-www-form-urlencoded"}
+    data = {"grant_type": "client_credentials"}
 
     response = requests.post(
         spotify_auth_url,
@@ -26,144 +21,83 @@ def get_access_token(client_id, client_secret):
         data=data,
         auth=(client_id, client_secret)
     )
-
     response.raise_for_status()
-    # print(response.json())
     return response.json()["access_token"]
 
-# y label, what we are going to try to predict
-def get_track_popularity(track_id, token):
-    pass
+
+def _auth_headers(token):
+    return {"Authorization": f"Bearer {token}"}
 
 
+# ---- CACHES ----
+_TRACK_CACHE = {}
+_ARTIST_CACHE = {}
 
-''' artist's metadata '''
-
-# retrieve artist by artist_id, type string
-def get_artist_name(artist_id, token):
-    url = f"https://api.spotify.com/v1/artists/{artist_id}"
-    headers = {
-        "Authorization": f"Bearer {token}"
-    }
-    artist = requests.get(
-        url, 
-        headers=headers
-    )
-
-    return artist.json()["name"]
-
-# retrieve genres for an artist by artist_id, type array of strings
-def get_artist_genres(artist_id, token):
-    url = f"https://api.spotify.com/v1/artists/{artist_id}"
-    headers = {
-        "Authorization": f"Bearer {token}"
-    }
-    artist = requests.get(
-        url, 
-        headers=headers
-    )
-
-    return artist.json()["genres"]
-
-# retrieve popularity of an artist of scale 0-100, type int
-def get_artist_popularity(artist_id, token):
-    url = f"https://api.spotify.com/v1/artists/{artist_id}"
-    headers = {
-        "Authorization": f"Bearer {token}"
-    }
-    artist = requests.get(
-        url, 
-        headers=headers
-    )
-    return artist.json()["popularity"]
-
-# retrieve follower count of an artist, type int
-def get_artist_follow_count(artist_id, token):
-    url = f"https://api.spotify.com/v1/artists/{artist_id}"
-    headers = {
-        "Authorization": f"Bearer {token}"
-    }
-    artist = requests.get(
-        url, 
-        headers=headers
-    )
-
-    return artist.json()["followers"]["total"]    
-
-''' track metadata '''
-
-# retrieve artists, type arr
-def get_track_artists(track_id, token):
+def fetch_track_json(track_id, token):
+    if track_id in _TRACK_CACHE:
+        return _TRACK_CACHE[track_id]
     url = f"https://api.spotify.com/v1/tracks/{track_id}"
-    headers = {
-        "Authorization": f"Bearer {token}"
-    }
-    track_request = requests.get(
-        url, 
-        headers=headers
-    )
-    track = track_request.json()
+    r = requests.get(url, headers=_auth_headers(token))
+    r.raise_for_status()
+    _TRACK_CACHE[track_id] = r.json()
+    return _TRACK_CACHE[track_id]
 
+def fetch_artist_json(artist_id, token):
+    if artist_id in _ARTIST_CACHE:
+        return _ARTIST_CACHE[artist_id]
+    url = f"https://api.spotify.com/v1/artists/{artist_id}"
+    r = requests.get(url, headers=_auth_headers(token))
+    r.raise_for_status()
+    _ARTIST_CACHE[artist_id] = r.json()
+    return _ARTIST_CACHE[artist_id]
+
+
+# ---- YOUR METHODS, rewritten to use cached JSON ----
+
+def get_track_popularity(track_id, token):
+    track = fetch_track_json(track_id, token)
+    return track["popularity"]
+
+def get_track_artists(track_id, token):
+    track = fetch_track_json(track_id, token)
     return [{"name": a["name"], "id": a["id"]} for a in track["artists"]]
 
-# retrieve track duration
 def get_duration_ms(track_id, token):
-    url = f"https://api.spotify.com/v1/tracks/{track_id}"
-    headers = {
-        "Authorization": f"Bearer {token}"
-    }
-    track = requests.get(
-        url, 
-        headers=headers
-    )
-    return track.json()["duration_ms"]
+    track = fetch_track_json(track_id, token)
+    return track["duration_ms"]
 
-# retrieve if a song has explicit lyrics or not, type boolean
 def get_explicit_status(track_id, token):
-    url = f"https://api.spotify.com/v1/tracks/{track_id}"
-    headers = {
-        "Authorization": f"Bearer {token}"
-    }
-    track = requests.get(
-        url, 
-        headers=headers
-    )
-    return track.json()["explicit"]
+    track = fetch_track_json(track_id, token)
+    return track["explicit"]
 
-# retrieve if a track has 
 def get_track_name(track_id, token):
-    url = f"https://api.spotify.com/v1/tracks/{track_id}"
-    headers = {
-        "Authorization": f"Bearer {token}"
-    }
-    track = requests.get(
-        url, 
-        headers=headers
-    )
-    return track.json()["name"]
-# retrieve release date of track, type str
-def get_track_release_date(track_id, token):
-    url = f"https://api.spotify.com/v1/tracks/{track_id}"
-    headers = {
-        "Authorization": f"Bearer {token}"
-    }
-    track = requests.get(
-        url, 
-        headers=headers
-    )
-    return track.json()["album"]["release_date"]
+    track = fetch_track_json(track_id, token)
+    return track["name"]
 
-# retrieve num of markets song is currently available in, type arr
+def get_track_release_date(track_id, token):
+    track = fetch_track_json(track_id, token)
+    return track["album"]["release_date"]
+
 def get_num_markets(track_id, token):
-    url = f"https://api.spotify.com/v1/tracks/{track_id}"
-    headers = {
-        "Authorization": f"Bearer {token}"
-    }
-    track = requests.get(
-        url, 
-        headers=headers
-    )
-    return len(track.json()["available_markets"])
+    track = fetch_track_json(track_id, token)
+    return len(track["available_markets"])
+
+
+def get_artist_name(artist_id, token):
+    artist = fetch_artist_json(artist_id, token)
+    return artist["name"]
+
+def get_artist_genres(artist_id, token):
+    artist = fetch_artist_json(artist_id, token)
+    return artist["genres"]
+
+def get_artist_popularity(artist_id, token):
+    artist = fetch_artist_json(artist_id, token)
+    return artist["popularity"]
+
+def get_artist_follow_count(artist_id, token):
+    artist = fetch_artist_json(artist_id, token)
+    return artist["followers"]["total"]
 
 
 # main
