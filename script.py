@@ -52,7 +52,7 @@ def fetch_artist_json(artist_id, token):
     return _ARTIST_CACHE[artist_id]
 
 
-# ---- YOUR METHODS, rewritten to use cached JSON ----
+# ---- methods to use cached json instead of many unneccesary API calls ----
 
 def get_track_popularity(track_id, token):
     track = fetch_track_json(track_id, token)
