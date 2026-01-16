@@ -28,8 +28,57 @@ def get_access_token(client_id, client_secret):
 def _auth_headers(token):
     return {"Authorization": f"Bearer {token}"}
 
+# ---- playlist api call methods to retrieve a set of track_ids ----
+def fetch_playlist_tracks(playlist_id, token):
+    track_ids = set()
 
-# ---- CACHES ----
+    url = f"https://api.spotify.com/v1/playlists/{playlist_id}/tracks"
+    params = {"limit": 100}
+
+    while url is not None:
+        r = requests.get(url, headers=_auth_headers(token), params=params)
+        r.raise_for_status()
+        playlist = r.json()
+        for item in playlist["items"]:
+            if item["track"] is None:
+                continue
+            track = item["track"]
+            if track["is_local"]:
+                continue
+
+            track_ids.add(track["id"])
+
+        url = playlist["next"]
+        params = None
+    
+    return track_ids
+
+def collect_track_ids_from_playlists(playlist_ids, token, target=None):
+    all_ids = set()
+
+    for i, pid in enumerate(playlist_ids, start=1):
+        ids = fetch_playlist_tracks(pid, token)  # returns set of ids to filter duplicates
+        before = len(all_ids)
+        all_ids.update(ids)
+        added = len(all_ids) - before
+
+        print(f"[{i}/{len(playlist_ids)}] {pid}: +{added} (total={len(all_ids)})")
+
+        if target is not None and len(all_ids) >= target:
+            break
+
+    return all_ids
+
+def save_track_ids(track_ids, path):
+    with open(path, "w") as f:
+        for tid in track_ids:
+            f.write(tid + "\n")
+
+def load_track_ids(path):
+    with open(path, "r") as f:
+        return [line.strip() for line in f if line.strip()]
+
+# ---- caches to store json data ----
 _TRACK_CACHE = {}
 _ARTIST_CACHE = {}
 
@@ -103,7 +152,7 @@ def get_artist_follow_count(artist_id, token):
 # main
 def main():
     token = get_access_token(CLIENT_ID, CLIENT_SECRET)
-    print(get_num_markets("3bGfuGWywg85koHG8nturm",token))
+    print(fetch_playlist_tracks("3Syez6y6KGpxBnhc1sZkPf", token))
 
 if __name__ == "__main__":
     main()
