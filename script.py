@@ -53,21 +53,26 @@ def fetch_playlist_tracks(playlist_id, token):
     
     return track_ids
 
-def collect_track_ids_from_playlists(playlist_ids, token, target=None):
-    all_ids = set()
+def collect_track_ids_from_playlists_ordered(playlist_ids, token, target=10000):
+    seen = set()
+    ordered_ids = []
 
     for i, pid in enumerate(playlist_ids, start=1):
-        ids = fetch_playlist_tracks(pid, token)  # returns set of ids to filter duplicates
-        before = len(all_ids)
-        all_ids.update(ids)
-        added = len(all_ids) - before
+        ids = fetch_playlist_tracks(pid, token)  #set
+        added = 0
 
-        print(f"[{i}/{len(playlist_ids)}] {pid}: +{added} (total={len(all_ids)})")
+        for tid in ids:
+            if tid not in seen:
+                seen.add(tid)
+                ordered_ids.append(tid)
+                added += 1
 
-        if target is not None and len(all_ids) >= target:
+        print(f"[{i}/{len(playlist_ids)}] {pid}: +{added} (total={len(seen)})")
+
+        if target is not None and len(seen) >= target:
             break
 
-    return all_ids
+    return ordered_ids, seen
 
 def save_track_ids(track_ids, path):
     with open(path, "w") as f:
@@ -152,7 +157,18 @@ def get_artist_follow_count(artist_id, token):
 # main
 def main():
     token = get_access_token(CLIENT_ID, CLIENT_SECRET)
-    print(fetch_playlist_tracks("3Syez6y6KGpxBnhc1sZkPf", token))
+    target = 10000
+    playlist_ids = [
+        "3Syez6y6KGpxBnhc1sZkPf",  
+        "5BhoCYy2eHT50JX0SfvB1E",  
+    ]
+
+    track_ids_list, track_ids_set = collect_track_ids_from_playlists_ordered(
+        playlist_ids, token, target=target
+    )
+
+    print(f"Final unique track IDs: {len(track_ids_set)}")
+    save_track_ids(track_ids_list, "track_ids_10k.txt")
 
 if __name__ == "__main__":
     main()
