@@ -28,7 +28,120 @@ def get_access_token(client_id, client_secret):
 def _auth_headers(token):
     return {"Authorization": f"Bearer {token}"}
 
+# ---- category api call methods to retrieve playlist ids, diversifying dataset ----
+# def get_all_category_ids(token):
+#     url = "https://api.spotify.com/v1/browse/categories"
+#     headers = _auth_headers(token)
+
+#     category_ids = []
+#     limit = 50
+#     offset = 0
+
+#     while True:
+#         r = requests.get(url, headers=headers, params={"limit": limit, "offset": offset})
+#         r.raise_for_status()
+#         data = r.json()
+
+#         # IMPORTANT: categories -> items -> each has "id" like "pop", "rock", etc.
+#         for cat in data["categories"]["items"]:
+#             category_ids.append(cat["id"])
+
+#         if data["categories"]["next"] is None:
+#             break
+
+#         offset += limit
+
+#     return category_ids
+
+# def get_playlist_ids_from_category(category_id, token, max_playlists=50, country="US"):
+#     url = f"https://api.spotify.com/v1/browse/categories/{category_id}/playlists"
+#     headers = _auth_headers(token)
+
+#     playlist_ids = []
+#     limit = 50
+#     offset = 0
+
+#     while True:
+#         params = {"limit": limit, "offset": offset, "country": country}
+#         r = requests.get(url, headers=headers, params=params)
+
+#         # Skip categories that aren't accessible via client_credentials (often 404)
+#         if r.status_code == 404:
+#             return []
+
+#         r.raise_for_status()
+#         data = r.json()
+
+#         for playlist in data["playlists"]["items"]:
+#             playlist_ids.append(playlist["id"])
+#             if len(playlist_ids) >= max_playlists:
+#                 return playlist_ids
+
+#         if data["playlists"]["next"] is None:
+#             break
+
+#         offset += limit
+
+#     return playlist_ids
+
+
+
+# def collect_playlist_ids_from_categories(token, max_playlists_per_category=5, country="US"):
+#     all_playlist_ids = []
+#     seen = set()
+
+#     category_ids = get_all_category_ids(token)
+
+#     for i, cid in enumerate(category_ids, start=1):
+#         url = f"https://api.spotify.com/v1/browse/categories/{cid}/playlists"
+#         params = {"limit": 50, "offset": 0, "country": country}
+#         r = requests.get(url, headers=_auth_headers(token), params=params)
+
+#         if r.status_code == 404:
+#             print(f"[{i}/{len(category_ids)}] category {cid}: 404 (skipping)")
+#             continue
+
+#         r.raise_for_status()
+#         data = r.json()
+
+#         items = data.get("playlists", {}).get("items", [])
+#         if not items:
+#             print(f"[{i}/{len(category_ids)}] category {cid}: 0 playlists")
+#             continue
+
+#         added = 0
+#         for p in items[:max_playlists_per_category]:
+#             pid = p["id"]
+#             if pid not in seen:
+#                 seen.add(pid)
+#                 all_playlist_ids.append(pid)
+#                 added += 1
+
+#         print(f"[{i}/{len(category_ids)}] category {cid}: +{added} playlists (total={len(all_playlist_ids)})")
+
+#     return all_playlist_ids
+
+
 # ---- playlist api call methods to retrieve a set of track_ids ----
+def load_playlist_ids(path="playlist_ids.txt"):
+    playlist_ids = []
+
+    with open(path, "r") as f:
+        for line in f:
+            line = line.strip()
+
+            # skip blank lines or full-line comments
+            if not line or line.startswith("#"):
+                continue
+
+            # allow inline comments
+            playlist_id = line.split("#")[0].strip()
+
+            if playlist_id:
+                playlist_ids.append(playlist_id)
+
+    return playlist_ids
+
 def fetch_playlist_tracks(playlist_id, token):
     track_ids = set()
 
@@ -39,19 +152,23 @@ def fetch_playlist_tracks(playlist_id, token):
         r = requests.get(url, headers=_auth_headers(token), params=params)
         r.raise_for_status()
         playlist = r.json()
+
         for item in playlist["items"]:
             if item["track"] is None:
                 continue
             track = item["track"]
             if track["is_local"]:
                 continue
+            if track["id"] is None:
+                continue
 
             track_ids.add(track["id"])
 
         url = playlist["next"]
-        params = None
-    
+        params = None  # keep this
+
     return track_ids
+
 
 def collect_track_ids_from_playlists_ordered(playlist_ids, token, target=10000):
     seen = set()
@@ -153,22 +270,40 @@ def get_artist_follow_count(artist_id, token):
     artist = fetch_artist_json(artist_id, token)
     return artist["followers"]["total"]
 
+def debug_categories_call(token):
+    url = "https://api.spotify.com/v1/browse/categories"
+    r = requests.get(url, headers=_auth_headers(token), params={"limit": 10, "offset": 0})
+
+    print("STATUS:", r.status_code)
+    print("FINAL URL:", r.url)          # <-- confirms endpoint + query params
+    print("TOP KEYS:", list(r.json().keys()))  # <-- shows if 'categories' exists
+
+    data = r.json()
+    if "categories" not in data:
+        print("NOT a categories response. Here's a snippet:")
+        print(str(data)[:500])
+        return
+
+    items = data["categories"]["items"]
+    print("FIRST 5 category (name, id):")
+    for c in items[:5]:
+        print(c["name"], "->", c["id"])
 
 # main
 def main():
     token = get_access_token(CLIENT_ID, CLIENT_SECRET)
-    target = 10000
-    playlist_ids = [
-        "3Syez6y6KGpxBnhc1sZkPf",  
-        "5BhoCYy2eHT50JX0SfvB1E",  
-    ]
 
-    track_ids_list, track_ids_set = collect_track_ids_from_playlists_ordered(
-        playlist_ids, token, target=target
+    playlist_ids = load_playlist_ids("playlist_ids.txt")
+    print("Playlists:", len(playlist_ids), playlist_ids[:5])
+
+    track_ids, seen = collect_track_ids_from_playlists_ordered(
+        playlist_ids,
+        token,
+        target=10_000
     )
 
-    print(f"Final unique track IDs: {len(track_ids_set)}")
-    save_track_ids(track_ids_list, "track_ids_10k.txt")
+    print("Tracks:", len(seen))
+    save_track_ids(track_ids, "track_ids_10k.txt")
 
 if __name__ == "__main__":
     main()
