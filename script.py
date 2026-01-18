@@ -184,8 +184,6 @@ def collect_track_ids_from_playlists_ordered(playlist_ids, token, target=10000):
                 ordered_ids.append(tid)
                 added += 1
 
-        print(f"[{i}/{len(playlist_ids)}] {pid}: +{added} (total={len(seen)})")
-
         if target is not None and len(seen) >= target:
             break
 
@@ -270,31 +268,12 @@ def get_artist_follow_count(artist_id, token):
     artist = fetch_artist_json(artist_id, token)
     return artist["followers"]["total"]
 
-def debug_categories_call(token):
-    url = "https://api.spotify.com/v1/browse/categories"
-    r = requests.get(url, headers=_auth_headers(token), params={"limit": 10, "offset": 0})
-
-    print("STATUS:", r.status_code)
-    print("FINAL URL:", r.url)          # <-- confirms endpoint + query params
-    print("TOP KEYS:", list(r.json().keys()))  # <-- shows if 'categories' exists
-
-    data = r.json()
-    if "categories" not in data:
-        print("NOT a categories response. Here's a snippet:")
-        print(str(data)[:500])
-        return
-
-    items = data["categories"]["items"]
-    print("FIRST 5 category (name, id):")
-    for c in items[:5]:
-        print(c["name"], "->", c["id"])
-
 # main
 def main():
     token = get_access_token(CLIENT_ID, CLIENT_SECRET)
 
     playlist_ids = load_playlist_ids("playlist_ids.txt")
-    print("Playlists:", len(playlist_ids), playlist_ids[:5])
+    print("Playlists:", len(playlist_ids))
 
     track_ids, seen = collect_track_ids_from_playlists_ordered(
         playlist_ids,
