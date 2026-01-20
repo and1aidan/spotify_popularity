@@ -200,6 +200,7 @@ def load_track_ids(path):
 
 # ---- caches to store json data ----
 _TRACK_CACHE = {}
+_AUDIO_FEATURE_CACHE = {}
 _ARTIST_CACHE = {}
 
 def fetch_track_json(track_id, token):
@@ -210,6 +211,15 @@ def fetch_track_json(track_id, token):
     r.raise_for_status()
     _TRACK_CACHE[track_id] = r.json()
     return _TRACK_CACHE[track_id]
+
+def fetch_audio_feature_json(track_id, token):
+    if track_id in _AUDIO_FEATURE_CACHE:
+        return _AUDIO_FEATURE_CACHE[track_id]
+    url = f"https://api.spotify.com/v1/audio-features/{track_id}"
+    r = requests.get(url, headers=_auth_headers(token))
+    r.raise_for_status()
+    _AUDIO_FEATURE_CACHE[track_id] = r.json()
+    return _AUDIO_FEATURE_CACHE[track_id]
 
 def fetch_artist_json(artist_id, token):
     if artist_id in _ARTIST_CACHE:
@@ -267,22 +277,33 @@ def get_artist_popularity(artist_id, token):
 def get_artist_follow_count(artist_id, token):
     artist = fetch_artist_json(artist_id, token)
     return artist["followers"]["total"]
+def get_audio_features(track_id, token):
+    url = f"https://api.spotify.com/v1/audio-features/{track_id}"
+    headers = {"Authorization": f"Bearer {token}"}
+    r = requests.get(url, headers=headers)
+
+    if r.status_code == 403:
+        print("Forbidden:", r.json())
+    r.raise_for_status()
+    return r.json()
+
 
 # main
 def main():
     token = get_access_token(CLIENT_ID, CLIENT_SECRET)
 
-    playlist_ids = load_playlist_ids("playlist_ids.txt")
-    print("Playlists:", len(playlist_ids))
+    # playlist_ids = load_playlist_ids("playlist_ids.txt")
+    # print("Playlists:", len(playlist_ids))
 
-    track_ids, seen = collect_track_ids_from_playlists_ordered(
-        playlist_ids,
-        token,
-        target=10_000
-    )
+    # track_ids, seen = collect_track_ids_from_playlists_ordered(
+    #     playlist_ids,
+    #     token,
+    #     target=10_000
+    # )
 
-    print("Tracks:", len(seen))
-    save_track_ids(track_ids, "track_ids_10k.txt")
+    # print("Tracks:", len(seen))
+    # save_track_ids(track_ids, "track_ids_10k.txt")
+    print(fetch_track_json("2Gnsof1hvZzjE1xdLRpjtf",token))
 
 if __name__ == "__main__":
     main()
